@@ -1,8 +1,9 @@
+#![allow(clippy::type_complexity)]
+
 use std::mem;
 
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, StartDigging, StartSneaking};
 use valence::prelude::*;
+use valence::client::message::SendMessage;
 
 const BOARD_MIN_X: i32 = -30;
 const BOARD_MAX_X: i32 = 30;
@@ -23,26 +24,30 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()).with_biomes(vec![Biome {
-            grass_color: Some(0x00ff00),
-            ..Default::default()
-        }]))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_set(PlayerList::default_system_set())
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system_to_stage(EventLoop, toggle_cell_on_dig)
-        .add_system(update_board)
-        .add_system(pause_on_crouch)
-        .add_system(reset_oob_clients)
+        .add_systems((
+            despawn_disconnected_clients,
+            toggle_cell_on_dig,
+            update_board,
+            pause_on_crouch,
+            reset_oob_clients,
+        ))
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: ResMut<DimensionTypeRegistry>,
+    mut biomes: ResMut<BiomeRegistry>,
+) {
+    for (_, _, biome) in biomes.iter_mut() {
+        biome.effects.grass_color = Some(0x00ff00);
+    }
+
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -10..10 {
         for x in -10..10 {
@@ -56,9 +61,9 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 
-    world.insert_resource(LifeBoard {
+    commands.insert_resource(LifeBoard {
         paused: true,
         board: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
         board_buf: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
@@ -66,20 +71,19 @@ fn setup(world: &mut World) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for mut client in &mut clients {
-        client.set_position(SPAWN_POS);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Survival);
-
-        client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
-        client.send_message(
+    for (mut client, mut loc, mut pos) in &mut clients {
+        client.send_chat_message("Welcome to Conway's game of life in Minecraft!".italic());
+        client.send_chat_message(
             "Sneak to toggle running the simulation and the left mouse button to bring blocks to \
              life."
                 .italic(),
         );
+
+        loc.0 = instances.single();
+        pos.set(SPAWN_POS);
     }
 }
 
@@ -145,12 +149,14 @@ impl LifeBoard {
     }
 }
 
-fn toggle_cell_on_dig(mut events: EventReader<StartDigging>, mut board: ResMut<LifeBoard>) {
+fn toggle_cell_on_dig(mut events: EventReader<DiggingEvent>, mut board: ResMut<LifeBoard>) {
     for event in events.iter() {
-        let (x, z) = (event.position.x, event.position.z);
+        if event.state == DiggingState::Start {
+            let (x, z) = (event.position.x, event.position.z);
 
-        let live = board.get(x, z);
-        board.set(x, z, !live);
+            let live = board.get(x, z);
+            board.set(x, z, !live);
+        }
     }
 }
 
@@ -179,27 +185,32 @@ fn update_board(
 }
 
 fn pause_on_crouch(
-    mut events: EventReader<StartSneaking>,
+    mut events: EventReader<Sneaking>,
     mut board: ResMut<LifeBoard>,
     mut clients: Query<&mut Client>,
 ) {
-    for _ in events.iter() {
-        board.paused = !board.paused;
+    for event in events.iter() {
+        if event.state == SneakState::Start {
+            board.paused = !board.paused;
 
-        for mut client in clients.iter_mut() {
-            if board.paused {
-                client.set_action_bar("Paused".italic().color(Color::RED));
-            } else {
-                client.set_action_bar("Playing".italic().color(Color::GREEN));
+            for mut client in clients.iter_mut() {
+                if board.paused {
+                    client.set_action_bar("Paused".italic().color(Color::RED));
+                } else {
+                    client.set_action_bar("Playing".italic().color(Color::GREEN));
+                }
             }
         }
     }
 }
 
-fn reset_oob_clients(mut clients: Query<&mut Client>, mut board: ResMut<LifeBoard>) {
-    for mut client in &mut clients {
-        if client.position().y < 0.0 {
-            client.set_position(SPAWN_POS);
+fn reset_oob_clients(
+    mut clients: Query<&mut Position, With<Client>>,
+    mut board: ResMut<LifeBoard>,
+) {
+    for mut pos in &mut clients {
+        if pos.0.y < 0.0 {
+            pos.0 = SPAWN_POS;
             board.clear();
         }
     }
