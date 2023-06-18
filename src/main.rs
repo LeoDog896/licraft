@@ -57,6 +57,19 @@ fn setup(
         }
     }
 
+    // make outside trims
+    {
+        for z in BOARD_MIN_Z..=BOARD_MAX_Z {
+            instance.set_block([BOARD_MIN_X - 1, BOARD_Y, z], BlockState::SPRUCE_PLANKS);
+            instance.set_block([BOARD_MAX_X + 1, BOARD_Y, z], BlockState::SPRUCE_PLANKS);
+        }
+
+        for x in BOARD_MIN_X..=BOARD_MAX_X {
+            instance.set_block([x, BOARD_Y, BOARD_MIN_Z - 1], BlockState::SPRUCE_PLANKS);
+            instance.set_block([x, BOARD_Y, BOARD_MAX_Z + 1], BlockState::SPRUCE_PLANKS);
+        }
+    }
+
     commands.spawn(instance);
 }
 
@@ -65,7 +78,11 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut client, mut loc, mut pos) in &mut clients {
-        client.send_chat_message("Lichess in Minecraft!");
+        client.send_chat_message("Welcome to Chess in Minecraft!".color(Color::GOLD));
+        client.send_chat_message("This aims to be a fully functional chess client in Minecraft.");
+        client.send_chat_message("This is a work in progress, so expect bugs and missing features.");
+        client.send_chat_message("If you find any bugs, please report them to the developer.");
+
 
         loc.0 = instances.single();
         pos.set(SPAWN_POS);
