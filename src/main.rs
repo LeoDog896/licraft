@@ -1,9 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use shakmaty::{Chess, Position as ChessPosition, Piece as ChessPiece, Square};
-use valence::prelude::*;
+use shakmaty::{Chess, Piece as ChessPiece, Position as ChessPosition, Square};
 use valence::client::message::SendMessage;
 use valence::entity::armor_stand::ArmorStandEntityBundle;
+use valence::prelude::*;
 
 const BOARD_MIN_X: i32 = -4;
 const BOARD_MAX_X: i32 = 3;
@@ -17,7 +17,7 @@ const SPAWN_POS: DVec3 = DVec3::new(
     (BOARD_MIN_Z + BOARD_MAX_Z) as f64 / 2.0,
 );
 
-/// 
+///
 #[derive(Component)]
 struct Piece {
     piece: ChessPiece,
@@ -31,10 +31,7 @@ pub fn main() {
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems((
-            despawn_disconnected_clients,
-            reset_oob_clients,
-        ))
+        .add_systems((despawn_disconnected_clients, reset_oob_clients))
         .run();
 }
 
@@ -86,23 +83,22 @@ fn setup(
 
     commands.insert_resource(board.clone());
 
-    commands.spawn_batch(board.clone().board.board().clone().into_iter().map(move |(pos, piece)| {
-        (
-            ArmorStandEntityBundle {
-                location: Location(instance_id),
-                position: Position::new(DVec3::new(
-                    (pos.file() as i32 - 4) as f64 + 0.5,
-                    BOARD_Y as f64 - 0.5,
-                    (pos.rank() as i32 - 4) as f64 + 0.5,
-                )),
-                ..Default::default()
-            },
-            Piece {
-                piece,
-                square: pos,
-            }
-        )
-    }));
+    commands.spawn_batch(board.clone().board.board().clone().into_iter().map(
+        move |(pos, piece)| {
+            (
+                ArmorStandEntityBundle {
+                    location: Location(instance_id),
+                    position: Position::new(DVec3::new(
+                        (pos.file() as i32 - 4) as f64 + 0.5,
+                        BOARD_Y as f64 - 0.5,
+                        (pos.rank() as i32 - 4) as f64 + 0.5,
+                    )),
+                    ..Default::default()
+                },
+                Piece { piece, square: pos },
+            )
+        },
+    ));
 }
 
 #[derive(Resource, Clone, Debug, PartialEq, Eq, Hash)]
@@ -118,18 +114,16 @@ fn init_clients(
         client.send_chat_message("Welcome to Chess in Minecraft!".color(Color::GOLD));
         client.send_chat_message("");
         client.send_chat_message("This aims to be a fully functional chess client in Minecraft.");
-        client.send_chat_message("This is a work in progress, so expect bugs and missing features.");
+        client
+            .send_chat_message("This is a work in progress, so expect bugs and missing features.");
         client.send_chat_message("If you find any bugs, please report them to the developer.");
-
 
         loc.0 = instances.single();
         pos.set(SPAWN_POS);
     }
 }
 
-fn reset_oob_clients(
-    mut clients: Query<&mut Position, With<Client>>,
-) {
+fn reset_oob_clients(mut clients: Query<&mut Position, With<Client>>) {
     for mut pos in &mut clients {
         if pos.0.y < 60.0 {
             pos.0 = SPAWN_POS;
