@@ -6,9 +6,9 @@ use valence::client::message::SendMessage;
 use valence::entity::armor_stand::ArmorStandEntityBundle;
 
 const BOARD_MIN_X: i32 = -4;
-const BOARD_MAX_X: i32 = 4;
+const BOARD_MAX_X: i32 = 3;
 const BOARD_MIN_Z: i32 = -4;
-const BOARD_MAX_Z: i32 = 4;
+const BOARD_MAX_Z: i32 = 3;
 const BOARD_Y: i32 = 64;
 
 const SPAWN_POS: DVec3 = DVec3::new(
@@ -92,7 +92,7 @@ fn setup(
                 location: Location(instance_id),
                 position: Position::new(DVec3::new(
                     (pos.file() as i32 - 4) as f64 + 0.5,
-                    BOARD_Y as f64 + 1.0,
+                    BOARD_Y as f64 - 0.5,
                     (pos.rank() as i32 - 4) as f64 + 0.5,
                 )),
                 ..Default::default()
