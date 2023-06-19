@@ -1,7 +1,9 @@
 #![allow(clippy::type_complexity)]
 
+use shakmaty::{Chess, Position as ChessPosition, Piece as ChessPiece, Square};
 use valence::prelude::*;
 use valence::client::message::SendMessage;
+use valence::entity::armor_stand::ArmorStandEntityBundle;
 
 const BOARD_MIN_X: i32 = -4;
 const BOARD_MAX_X: i32 = 4;
@@ -14,6 +16,13 @@ const SPAWN_POS: DVec3 = DVec3::new(
     BOARD_Y as f64 + 1.0,
     (BOARD_MIN_Z + BOARD_MAX_Z) as f64 / 2.0,
 );
+
+/// 
+#[derive(Component)]
+struct Piece {
+    piece: ChessPiece,
+    square: Square,
+}
 
 pub fn main() {
     tracing_subscriber::fmt().init();
@@ -70,7 +79,35 @@ fn setup(
         }
     }
 
-    commands.spawn(instance);
+    let instance_id = commands.spawn(instance).id();
+    let board = ChessBoard {
+        board: Chess::default(),
+    };
+
+    commands.insert_resource(board.clone());
+
+    commands.spawn_batch(board.clone().board.board().clone().into_iter().map(move |(pos, piece)| {
+        (
+            ArmorStandEntityBundle {
+                location: Location(instance_id),
+                position: Position::new(DVec3::new(
+                    (pos.file() as i32 - 4) as f64 + 0.5,
+                    BOARD_Y as f64 + 1.0,
+                    (pos.rank() as i32 - 4) as f64 + 0.5,
+                )),
+                ..Default::default()
+            },
+            Piece {
+                piece,
+                square: pos,
+            }
+        )
+    }));
+}
+
+#[derive(Resource, Clone, Debug, PartialEq, Eq, Hash)]
+struct ChessBoard {
+    board: Chess,
 }
 
 fn init_clients(
@@ -79,6 +116,7 @@ fn init_clients(
 ) {
     for (mut client, mut loc, mut pos) in &mut clients {
         client.send_chat_message("Welcome to Chess in Minecraft!".color(Color::GOLD));
+        client.send_chat_message("");
         client.send_chat_message("This aims to be a fully functional chess client in Minecraft.");
         client.send_chat_message("This is a work in progress, so expect bugs and missing features.");
         client.send_chat_message("If you find any bugs, please report them to the developer.");
