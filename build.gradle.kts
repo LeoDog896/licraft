@@ -7,7 +7,6 @@ plugins {
     application
 }
 repositories {
-    // maven central
     mavenCentral()
 
     maven(url = "https://jitpack.io")
@@ -17,8 +16,14 @@ dependencies {
     // Add MiniMessage
     implementation("net.kyori:adventure-text-minimessage:4.12.0")
 
-    // Compile Minestom into project
+    // Add Minestom
     implementation("net.minestom:minestom-snapshots:33dff6f458")
+
+    // Add chariot, lichess bindings
+    implementation("io.github.tors42:chariot:0.0.88")
+
+    // Chesslib
+    implementation("com.github.bhlangonijr:chesslib:1.3.3")
 }
 
 application {

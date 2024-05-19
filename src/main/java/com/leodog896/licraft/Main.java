@@ -23,14 +23,16 @@ public class Main {
 
         MojangAuth.init();
 
-        InstanceManager instanceManager = MinecraftServer.getInstanceManager();
+        // Add fullbright dimension
         DimensionType fullbright = DimensionType.builder(NamespaceID.from("world:full_bright")).ambientLight(2.0f).build();
         MinecraftServer.getDimensionTypeManager().addDimension(fullbright);
+
+        InstanceManager instanceManager = MinecraftServer.getInstanceManager();
         // Create the instance
         InstanceContainer instanceContainer = instanceManager.createInstanceContainer(fullbright);
         // Set the ChunkGenerator
         instanceContainer.setGenerator(unit ->
-                unit.modifier().fillHeight(0, 40, Block.GRASS_BLOCK));
+                unit.modifier().fillHeight(0, 1, Block.AIR));
 
         // Add an event callback to specify the spawning instance (and the spawn position)
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
