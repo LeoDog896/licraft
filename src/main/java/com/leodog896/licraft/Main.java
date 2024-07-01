@@ -26,28 +26,20 @@ public class Main {
 
         MojangAuth.init();
 
-        InstanceManager instanceManager = MinecraftServer.getInstanceManager();
-        // Create the instance
-        InstanceContainer lobby = instanceManager.createInstanceContainer(FullbrightDimension.key);
-
-        // Set the ChunkGenerator
-        lobby.setGenerator(unit ->
-                unit.modifier().fillHeight(0, 1, Block.GRASS_BLOCK));
-
         // Add an event callback to specify the spawning instance (and the spawn position)
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
             final Player player = event.getPlayer();
-            event.setSpawningInstance(lobby);
-            player.setRespawnPoint(new Pos(0, 42, 0));
+            event.setSpawningInstance(Lobby.INSTANCE);
+            player.setRespawnPoint(Lobby.SPAWN_POSITION);
         });
 
         OpenToLAN.open(new OpenToLANConfig().eventCallDelay(Duration.of(5, TimeUnit.SECOND)));
 
         MinecraftServer.getCommandManager().register(new AnalysisCommand());
-        MinecraftServer.getCommandManager().register(new LobbyCommand(lobby));
+        MinecraftServer.getCommandManager().register(new LobbyCommand());
 
-        System.out.println("Server started on port 25565");
+        System.out.println("Server started on port 25565.");
 
         server.start("0.0.0.0", 25565);
     }
