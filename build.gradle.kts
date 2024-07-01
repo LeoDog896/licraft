@@ -31,6 +31,8 @@ application {
     mainClass = "com.leodog896.licraft.Main"
 }
 
+
+
 tasks {
     named<ShadowJar>("shadowJar") {
         manifest {

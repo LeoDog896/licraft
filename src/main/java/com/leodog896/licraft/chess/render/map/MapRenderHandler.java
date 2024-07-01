@@ -1,9 +1,13 @@
-package com.leodog896.licraft.chess.render;
+package com.leodog896.licraft.chess.render.map;
 
 import com.github.bhlangonijr.chesslib.Board;
+import com.github.bhlangonijr.chesslib.Piece;
+import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.Square;
 import com.github.bhlangonijr.chesslib.move.Move;
 import com.leodog896.licraft.chess.ChessGame;
+import com.leodog896.licraft.chess.render.RenderHandler;
+import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
@@ -15,7 +19,10 @@ import net.minestom.server.item.Material;
 import net.minestom.server.map.Framebuffer;
 import net.minestom.server.map.MapColors;
 import net.minestom.server.map.framebuffers.DirectFramebuffer;
-import net.minestom.server.map.framebuffers.Graphics2DFramebuffer;
+
+import java.awt.*;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class MapRenderHandler implements RenderHandler {
     private static final int BOARD_WIDTH = 8;
@@ -28,9 +35,11 @@ public class MapRenderHandler implements RenderHandler {
     private Entity[] screen = new Entity[BOARD_WIDTH * BOARD_HEIGHT];
 
     private ChessGame game;
+    private TextChessFont textChessFont;
 
-    public MapRenderHandler(ChessGame game) {
+    public MapRenderHandler(ChessGame game, TextChessFont textChessFont) {
         this.game = game;
+        this.textChessFont = textChessFont;
     }
 
     private void clear() {
@@ -48,12 +57,15 @@ public class MapRenderHandler implements RenderHandler {
 
     private void renderBoard(Board board, PacketGroupingAudience audience) {
         for (int i = first_id; i < first_id + BOARD_SIZE; i++) {
-            Graphics2DFramebuffer graphics2DFramebuffer = new Graphics2DFramebuffer();
+            Graphics2DAbsoluteAlphaFramebuffer framebuffer = new Graphics2DAbsoluteAlphaFramebuffer();
             Square square = Square.values()[i - first_id];
+            Piece piece = board.getPiece(square);
 
-            graphics2DFramebuffer.getRenderer().drawString(board.getPiece(square).name(), 10, 10);
+            if (piece == Piece.NONE) continue;
 
-            audience.sendGroupedPacket(graphics2DFramebuffer.preparePacket(i));
+            this.textChessFont.render(framebuffer.getRenderer(), piece);
+
+            audience.sendGroupedPacket(framebuffer.preparePacket(i));
         }
     }
 
@@ -69,7 +81,7 @@ public class MapRenderHandler implements RenderHandler {
         for (int i = 0; i < BOARD_SIZE; i++) {
             Entity entity = new Entity(EntityType.ITEM_FRAME);
 
-//            entity.setInvisible(true);
+            entity.setInvisible(true);
 
             ItemFrameMeta itemFrameMeta = (ItemFrameMeta) entity.getEntityMeta();
 

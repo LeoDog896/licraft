@@ -3,8 +3,9 @@ package com.leodog896.licraft.chess;
 import com.github.bhlangonijr.chesslib.Board;
 import com.leodog896.licraft.FullbrightDimension;
 import com.leodog896.licraft.Messages;
-import com.leodog896.licraft.chess.render.MapRenderHandler;
+import com.leodog896.licraft.chess.render.map.MapRenderHandler;
 import com.leodog896.licraft.chess.render.RenderHandler;
+import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
@@ -14,8 +15,6 @@ import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
-import net.minestom.server.event.instance.AddEntityToInstanceEvent;
-import net.minestom.server.event.instance.RemoveEntityFromInstanceEvent;
 import net.minestom.server.event.player.PlayerMoveEvent;
 import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.instance.Instance;
@@ -36,7 +35,7 @@ public class ChessGame {
 
     private Instance instance;
 
-    private RenderHandler renderHandler = new MapRenderHandler(this);
+    private RenderHandler renderHandler = new MapRenderHandler(this, new TextChessFont());
     private final Entity[] maps = new Entity[8 * 8];
 
     public ChessGame() {
