@@ -1,5 +1,7 @@
 package com.leodog896.licraft;
 
+import com.leodog896.licraft.commands.AnalysisCommand;
+import com.leodog896.licraft.commands.LobbyCommand;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
@@ -11,6 +13,7 @@ import net.minestom.server.extras.lan.OpenToLANConfig;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.InstanceManager;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.utils.NamespaceID;
 import net.minestom.server.utils.time.TimeUnit;
 import net.minestom.server.world.DimensionType;
@@ -23,26 +26,26 @@ public class Main {
 
         MojangAuth.init();
 
-        // Add fullbright dimension
-        DimensionType fullbright = DimensionType.builder(NamespaceID.from("world:full_bright")).ambientLight(2.0f).build();
-        MinecraftServer.getDimensionTypeManager().addDimension(fullbright);
-
         InstanceManager instanceManager = MinecraftServer.getInstanceManager();
         // Create the instance
-        InstanceContainer instanceContainer = instanceManager.createInstanceContainer(fullbright);
+        InstanceContainer lobby = instanceManager.createInstanceContainer(FullbrightDimension.key);
+
         // Set the ChunkGenerator
-        instanceContainer.setGenerator(unit ->
-                unit.modifier().fillHeight(0, 1, Block.AIR));
+        lobby.setGenerator(unit ->
+                unit.modifier().fillHeight(0, 1, Block.GRASS_BLOCK));
 
         // Add an event callback to specify the spawning instance (and the spawn position)
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
             final Player player = event.getPlayer();
-            event.setSpawningInstance(instanceContainer);
+            event.setSpawningInstance(lobby);
             player.setRespawnPoint(new Pos(0, 42, 0));
         });
 
         OpenToLAN.open(new OpenToLANConfig().eventCallDelay(Duration.of(5, TimeUnit.SECOND)));
+
+        MinecraftServer.getCommandManager().register(new AnalysisCommand());
+        MinecraftServer.getCommandManager().register(new LobbyCommand(lobby));
 
         System.out.println("Server started on port 25565");
 

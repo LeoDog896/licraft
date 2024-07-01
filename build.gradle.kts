@@ -1,3 +1,4 @@
+
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
@@ -17,7 +18,7 @@ dependencies {
     implementation("net.kyori:adventure-text-minimessage:4.12.0")
 
     // Add Minestom
-    implementation("net.minestom:minestom-snapshots:33dff6f458")
+    implementation("net.minestom:minestom-snapshots:8ea7760e6a")
 
     // Add chariot, lichess bindings
     implementation("io.github.tors42:chariot:0.0.88")
