@@ -1,11 +1,17 @@
 package com.leodog896.licraft.chess;
 
 import com.github.bhlangonijr.chesslib.Board;
+import com.github.bhlangonijr.chesslib.Square;
+import com.github.bhlangonijr.chesslib.move.Move;
 import com.leodog896.licraft.FullbrightDimension;
 import com.leodog896.licraft.Messages;
+import com.leodog896.licraft.chess.render.Action;
 import com.leodog896.licraft.chess.render.map.MapRenderHandler;
 import com.leodog896.licraft.chess.render.GameInterface;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
+import com.leodog896.licraft.chess.render.markup.Selected;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
@@ -20,13 +26,31 @@ import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.InstanceManager;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.sound.SoundEvent;
 import org.jetbrains.annotations.NotNull;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Stream;
 
 public class ChessGame {
     public static final Pos SPAWN_POSITION = new Pos(7.0 / 2, 5, 7.0 / 2);
+
+    private static final Color SELECT_COLOR = new Color(3, 119, 252);
+
+    private static final Sound SELECT_SOUND = Sound.sound(
+            Key.key(SoundEvent.BLOCK_LEVER_CLICK.name()),
+            Sound.Source.PLAYER, 1F, 1.5F
+    );
+    private static final Sound MOVE_SOUND = Sound.sound(
+            Key.key(SoundEvent.BLOCK_LEVER_CLICK.name()),
+            Sound.Source.PLAYER, 1F, 1.2F
+    );
+    private static final Sound MOVE_UNSUCCESSFUL = Sound.sound(
+            Key.key(SoundEvent.ENTITY_SKELETON_STEP.name()),
+            Sound.Source.PLAYER, 1F, 0.5F
+    );
 
     private final Set<Player> players = Collections.newSetFromMap(new WeakHashMap<>());
     private final Set<Player> spectators = Collections.newSetFromMap(new WeakHashMap<>());
@@ -35,8 +59,10 @@ public class ChessGame {
 
     private Instance instance;
 
-    private GameInterface gameInterface = new MapRenderHandler(this, new TextChessFont());
+    private GameInterface gameInterface;
     private final Entity[] maps = new Entity[8 * 8];
+
+    private Square selectedSquare;
 
     public ChessGame() {
         this(false);
@@ -87,12 +113,38 @@ public class ChessGame {
 
         this.instance = instance;
 
-        gameInterface.load();
+        setRenderHandler(new MapRenderHandler(this, new TextChessFont()));
     }
 
     public void setRenderHandler(GameInterface gameInterface) {
-        this.gameInterface.unload();
+        if (this.gameInterface != null) this.gameInterface.unload();
         this.gameInterface = gameInterface;
+        this.gameInterface.listenOnInteract((tuple) -> {
+            Player player = tuple._1();
+
+            if (!players.contains(player)) {
+                player.sendMessage(MiniMessage.miniMessage().deserialize(
+                        Messages.WARNING + "Don't mess with the board :<"
+                ));
+                return;
+            }
+
+            Square square = tuple._2();
+            Action action = tuple._3();
+
+            if (action == Action.PRIMARY) {
+                if (selectedSquare != null) {
+                    this.gameInterface.enableMarkup(new Selected(SELECT_COLOR, selectedSquare));
+                    attemptMove(player, selectedSquare, square);
+                } else {
+                    this.selectedSquare = square;
+                    this.gameInterface.enableMarkup(new Selected(SELECT_COLOR, selectedSquare));
+                    player.playSound(SELECT_SOUND);
+                }
+            }
+            // TODO: else
+        });
+
         this.gameInterface.load();
     }
 
@@ -163,6 +215,18 @@ public class ChessGame {
         PlayerGameManager.add(player, this);
 
         players.add(player);
+    }
+
+    public void attemptMove(Player player, Square from, Square to) {
+        selectedSquare = null;
+        Move move = new Move(from, to);
+        if (board.isMoveLegal(move, true)) {
+            board.doMove(move);
+            this.gameInterface.move(move);
+            this.audience().playSound(MOVE_SOUND, player.getPosition());
+        } else {
+            player.playSound(MOVE_UNSUCCESSFUL, player.getPosition());
+        }
     }
 
     public void finished() {

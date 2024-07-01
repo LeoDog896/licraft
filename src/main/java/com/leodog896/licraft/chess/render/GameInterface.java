@@ -24,10 +24,8 @@ public interface GameInterface {
 
     void move(Move move);
 
-    /**
-     * Toggles markup on the renderer
-     */
-    void markup(Markup markup);
+    void enableMarkup(Markup markup);
+    void disableMarkup(Markup markup);
 
     void clearMarkup();
 }

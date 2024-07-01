@@ -16,7 +16,10 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.other.ItemFrameMeta;
-import net.minestom.server.event.player.PlayerEntityInteractEvent;
+import net.minestom.server.event.EventFilter;
+import net.minestom.server.event.EventNode;
+import net.minestom.server.event.entity.EntityAttackEvent;
+import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -24,8 +27,10 @@ import net.minestom.server.map.Framebuffer;
 import net.minestom.server.map.MapColors;
 import net.minestom.server.map.framebuffers.DirectFramebuffer;
 
+import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
 
 public class MapRenderHandler implements GameInterface {
@@ -35,20 +40,25 @@ public class MapRenderHandler implements GameInterface {
 
     private static int MAP_ID_COUNTER = 1;
 
+    private static final DirectFramebuffer CLEAR_BUFFER = clearBuffer();
+
     private int first_id;
     private Entity[] screen = new Entity[BOARD_WIDTH * BOARD_HEIGHT];
+    private WeakHashMap<Entity, Square> entityToSquare = new WeakHashMap<>();
 
     private Map<Markup, Boolean> markupMap = new HashMap<>();
 
     private ChessGame game;
     private TextChessFont textChessFont;
 
+    private EventNode<InstanceEvent> eventNode = EventNode.type("render-event", EventFilter.INSTANCE);
+
     public MapRenderHandler(ChessGame game, TextChessFont textChessFont) {
         this.game = game;
         this.textChessFont = textChessFont;
     }
 
-    private void clear() {
+    private static DirectFramebuffer clearBuffer() {
         DirectFramebuffer framebuffer = new DirectFramebuffer();
         for (int i = 0; i < Framebuffer.WIDTH; i++) {
             for (int j = 0; j < Framebuffer.HEIGHT; j++) {
@@ -56,9 +66,7 @@ public class MapRenderHandler implements GameInterface {
             }
         }
 
-        for (int i = first_id; i < first_id + BOARD_SIZE; i++) {
-            game.audience().sendGroupedPacket(framebuffer.preparePacket(i));
-        }
+        return framebuffer;
     }
 
     private void renderBoard(Board board, PacketGroupingAudience audience) {
@@ -67,7 +75,10 @@ public class MapRenderHandler implements GameInterface {
             Square square = Square.values()[i - first_id];
             Piece piece = board.getPiece(square);
 
-            if (piece == Piece.NONE) continue;
+            if (piece == Piece.NONE) {
+                audience.sendGroupedPacket(CLEAR_BUFFER.preparePacket(i));
+                continue;
+            };
 
             this.textChessFont.render(framebuffer.getRenderer(), piece);
 
@@ -107,7 +118,10 @@ public class MapRenderHandler implements GameInterface {
             ).withDirection(new Pos(0, 1, 0)));
 
             screen[i] = entity;
+            entityToSquare.put(entity, Square.squareAt(i));
         }
+
+        game.getInstance().eventNode().addChild(eventNode);
 
         renderBoard(game.getBoard(), game.audience());
     }
@@ -122,24 +136,40 @@ public class MapRenderHandler implements GameInterface {
         for (Entity entity : screen) {
             entity.remove();
         }
+
+        game.getInstance().eventNode().removeChild(eventNode);
     }
 
     @Override
     public void listenOnInteract(Consumer<Tuple3<Player, Square, Action>> consumer) {
-        // TODO: unregister event node when done; perhaps create an event node for this renderer?
-        game.getInstance().eventNode().addListener(PlayerEntityInteractEvent.class, event -> {
+        eventNode.addListener(EntityAttackEvent.class, event -> {
+            if (!(event.getEntity() instanceof Player player)) {
+                return;
+            }
+
+            Square square = entityToSquare.get(event.getTarget());
+
+            if (square == null) {
+                return;
+            }
+
             consumer.accept(new Tuple3<>(
-                    event.getPlayer(),
-                    Square.A2,
+                    player,
+                    square,
                     Action.PRIMARY
             ));
         });
     }
 
+    @Override
+    public void enableMarkup(Markup markup) {
+        markupMap.put(markup, true);
+        rerender(game.audience());
+    }
 
     @Override
-    public void markup(Markup markup) {
-        markupMap.put(markup, !markupMap.getOrDefault(markup, false));
+    public void disableMarkup(Markup markup) {
+        markupMap.put(markup, false);
         rerender(game.audience());
     }
 

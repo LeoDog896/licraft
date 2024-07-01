@@ -48,6 +48,7 @@ public class TextChessFont implements ChessFont {
         int y = ((Framebuffer.HEIGHT - (
                 metrics.getHeight()
         )) / 2) + metrics.getAscent() - metrics.getDescent();
+        renderer.rotate(Math.PI, (double) Framebuffer.WIDTH / 2, (double) Framebuffer.HEIGHT / 2);
 
         renderer.setColor(new Color(0, 0, 0, 0));
         renderer.drawRect(0, 0, Framebuffer.WIDTH, Framebuffer.HEIGHT);

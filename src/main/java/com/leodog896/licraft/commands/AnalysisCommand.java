@@ -2,12 +2,15 @@ package com.leodog896.licraft.commands;
 
 import com.leodog896.licraft.chess.ChessGame;
 import net.minestom.server.command.builder.Command;
+import net.minestom.server.command.builder.condition.Conditions;
 import net.minestom.server.entity.Player;
 
 public class AnalysisCommand extends Command {
 
     public AnalysisCommand() {
         super("analyze");
+
+        setCondition(Conditions::playerOnly);
 
         setDefaultExecutor((sender, context) -> {
 
