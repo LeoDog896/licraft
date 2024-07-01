@@ -2,17 +2,21 @@ package com.leodog896.licraft.chess.render.map;
 
 import com.github.bhlangonijr.chesslib.Board;
 import com.github.bhlangonijr.chesslib.Piece;
-import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.Square;
 import com.github.bhlangonijr.chesslib.move.Move;
 import com.leodog896.licraft.chess.ChessGame;
-import com.leodog896.licraft.chess.render.RenderHandler;
+import com.leodog896.licraft.chess.render.Action;
+import com.leodog896.licraft.chess.render.GameInterface;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
+import com.leodog896.licraft.chess.render.markup.Markup;
+import io.vavr.Tuple3;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
+import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.other.ItemFrameMeta;
+import net.minestom.server.event.player.PlayerEntityInteractEvent;
 import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -20,11 +24,11 @@ import net.minestom.server.map.Framebuffer;
 import net.minestom.server.map.MapColors;
 import net.minestom.server.map.framebuffers.DirectFramebuffer;
 
-import java.awt.*;
-import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 
-public class MapRenderHandler implements RenderHandler {
+public class MapRenderHandler implements GameInterface {
     private static final int BOARD_WIDTH = 8;
     private static final int BOARD_HEIGHT = 8;
     private static final int BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT;
@@ -33,6 +37,8 @@ public class MapRenderHandler implements RenderHandler {
 
     private int first_id;
     private Entity[] screen = new Entity[BOARD_WIDTH * BOARD_HEIGHT];
+
+    private Map<Markup, Boolean> markupMap = new HashMap<>();
 
     private ChessGame game;
     private TextChessFont textChessFont;
@@ -108,7 +114,7 @@ public class MapRenderHandler implements RenderHandler {
 
     @Override
     public void move(Move move) {
-
+        rerender(game.audience());
     }
 
     @Override
@@ -116,5 +122,30 @@ public class MapRenderHandler implements RenderHandler {
         for (Entity entity : screen) {
             entity.remove();
         }
+    }
+
+    @Override
+    public void listenOnInteract(Consumer<Tuple3<Player, Square, Action>> consumer) {
+        // TODO: unregister event node when done; perhaps create an event node for this renderer?
+        game.getInstance().eventNode().addListener(PlayerEntityInteractEvent.class, event -> {
+            consumer.accept(new Tuple3<>(
+                    event.getPlayer(),
+                    Square.A2,
+                    Action.PRIMARY
+            ));
+        });
+    }
+
+
+    @Override
+    public void markup(Markup markup) {
+        markupMap.put(markup, !markupMap.getOrDefault(markup, false));
+        rerender(game.audience());
+    }
+
+    @Override
+    public void clearMarkup() {
+        markupMap.clear();
+        rerender(game.audience());
     }
 }

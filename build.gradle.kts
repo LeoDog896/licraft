@@ -25,6 +25,9 @@ dependencies {
 
     // Chesslib
     implementation("com.github.bhlangonijr:chesslib:1.3.3")
+
+    // vavr
+    implementation("io.vavr:vavr:0.10.3")
 }
 
 application {

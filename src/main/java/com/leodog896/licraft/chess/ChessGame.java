@@ -4,7 +4,7 @@ import com.github.bhlangonijr.chesslib.Board;
 import com.leodog896.licraft.FullbrightDimension;
 import com.leodog896.licraft.Messages;
 import com.leodog896.licraft.chess.render.map.MapRenderHandler;
-import com.leodog896.licraft.chess.render.RenderHandler;
+import com.leodog896.licraft.chess.render.GameInterface;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minestom.server.MinecraftServer;
@@ -35,7 +35,7 @@ public class ChessGame {
 
     private Instance instance;
 
-    private RenderHandler renderHandler = new MapRenderHandler(this, new TextChessFont());
+    private GameInterface gameInterface = new MapRenderHandler(this, new TextChessFont());
     private final Entity[] maps = new Entity[8 * 8];
 
     public ChessGame() {
@@ -83,17 +83,17 @@ public class ChessGame {
             }
         });
 
-        MinecraftServer.getGlobalEventHandler().addChild(eventNode);
+        instance.eventNode().addChild(eventNode);
 
         this.instance = instance;
 
-        renderHandler.load();
+        gameInterface.load();
     }
 
-    public void setRenderHandler(RenderHandler renderHandler) {
-        this.renderHandler.unload();
-        this.renderHandler = renderHandler;
-        this.renderHandler.load();
+    public void setRenderHandler(GameInterface gameInterface) {
+        this.gameInterface.unload();
+        this.gameInterface = gameInterface;
+        this.gameInterface.load();
     }
 
     public Instance getInstance() {
@@ -135,7 +135,7 @@ public class ChessGame {
     public void registerPlayer(Player player) {
         player.setInstance(instance, SPAWN_POSITION.withDirection(player.getPosition().direction()));
 
-        renderHandler.rerender(PacketGroupingAudience.of(List.of(player)));
+        gameInterface.rerender(PacketGroupingAudience.of(List.of(player)));
 
         if (players.size() > MAX_SIZE) {
             player.sendMessage(MiniMessage.miniMessage().deserialize(
@@ -166,7 +166,7 @@ public class ChessGame {
     }
 
     public void finished() {
-        this.renderHandler.unload();
+        this.gameInterface.unload();
 
         // TODO: send players & spectators to lobby.
     }
