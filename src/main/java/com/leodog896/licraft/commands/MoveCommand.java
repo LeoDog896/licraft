@@ -16,7 +16,7 @@ public class MoveCommand extends Command {
 
         setCondition(Conditions::playerOnly);
 
-        var moveArgument = ArgumentType.Literal("move");
+        var moveArgument = ArgumentType.Word("move");
 
         addSyntax((sender, context) -> {
             if (!(sender instanceof Player player)) {

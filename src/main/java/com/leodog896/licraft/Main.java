@@ -1,7 +1,6 @@
 package com.leodog896.licraft;
 
-import com.leodog896.licraft.commands.AnalysisCommand;
-import com.leodog896.licraft.commands.LobbyCommand;
+import com.leodog896.licraft.commands.*;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
@@ -38,6 +37,10 @@ public class Main {
 
         MinecraftServer.getCommandManager().register(new AnalysisCommand());
         MinecraftServer.getCommandManager().register(new LobbyCommand());
+        MinecraftServer.getCommandManager().register(new GamesCommand());
+        MinecraftServer.getCommandManager().register(new MoveCommand());
+        MinecraftServer.getCommandManager().register(new JoinCommand());
+        MinecraftServer.getCommandManager().register(new InviteCommand());
 
         System.out.println("Server started on port 25565.");
 

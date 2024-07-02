@@ -26,6 +26,7 @@ import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.InstanceManager;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.item.Material;
 import net.minestom.server.sound.SoundEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -54,7 +55,17 @@ public class ChessGame {
 
     private final Set<Player> players = Collections.newSetFromMap(new WeakHashMap<>());
     private final Set<Player> spectators = Collections.newSetFromMap(new WeakHashMap<>());
+    private final Set<Player> invited = Collections.newSetFromMap(new WeakHashMap<>());
+
+    private boolean isPublic = false;
+
     private final Board board = new Board();
+
+    private static final int ID_LENGTH = 5;
+    private static final WeakHashMap<String, ChessGame> chessGameIds = new WeakHashMap<>();
+    private final Material randomMaterial;
+
+    /** The max amount of players that can actively be playing a game at once */
     private int MAX_SIZE = 2;
 
     private Instance instance;
@@ -86,6 +97,11 @@ public class ChessGame {
             MAX_SIZE = 1;
         }
 
+        // TODO: actually give a random material
+        this.randomMaterial = Material.ACACIA_BOAT;
+
+        generateID();
+
         InstanceManager manager = MinecraftServer.getInstanceManager();
         Instance instance = manager.createInstanceContainer(FullbrightDimension.key);
 
@@ -114,6 +130,15 @@ public class ChessGame {
         this.instance = instance;
 
         setRenderHandler(new MapRenderHandler(this, new TextChessFont()));
+    }
+
+    public void generateID() {
+        String id = IDGenerator.generateID(ID_LENGTH);
+        if (chessGameIds.get(id) != null) {
+            generateID();
+        } else {
+            chessGameIds.put(id, this);
+        }
     }
 
     public void setRenderHandler(GameInterface gameInterface) {
@@ -182,6 +207,22 @@ public class ChessGame {
         player.sendMessage(MiniMessage.miniMessage().deserialize(
                 Messages.PREFIX + "You have left the game world!"
         ));
+    }
+
+    public static ChessGame getById(String id) {
+        return chessGameIds.get(id);
+    }
+
+    public boolean isPublic() {
+        return this.isPublic;
+    }
+
+    public boolean isInvited(Player player) {
+        return this.invited.contains(player);
+    }
+
+    public void invite(Player player) {
+        this.invited.add(player);
     }
 
     public void registerPlayer(Player player) {
