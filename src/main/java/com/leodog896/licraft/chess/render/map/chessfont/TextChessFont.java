@@ -2,6 +2,7 @@ package com.leodog896.licraft.chess.render.map.chessfont;
 
 import com.github.bhlangonijr.chesslib.Piece;
 import com.github.bhlangonijr.chesslib.Side;
+import com.leodog896.licraft.util.StringUtils;
 import net.minestom.server.map.Framebuffer;
 
 import java.awt.*;
@@ -11,6 +12,8 @@ import java.util.Arrays;
 
 public class TextChessFont implements ChessFont {
     private Font font;
+    private FontMetrics metrics;
+    private int textHeight;
 
     public TextChessFont() {
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
@@ -33,28 +36,34 @@ public class TextChessFont implements ChessFont {
     }
 
     @Override
-    public void render(Graphics2D renderer, Piece piece) {
-        String text = Arrays.stream(piece.name().split("_"))
-                .map(word ->
-                        String.valueOf(word.charAt(0)).toUpperCase()
-                                + word.toLowerCase().substring(1)
-                )
-                .skip(1)
-                .toList().getFirst();
-
+    public void prepare(Graphics2D renderer, int width, int height) {
+        renderer.setFont(font);
         // from https://stackoverflow.com/a/27740330/7589775
-        FontMetrics metrics = renderer.getFontMetrics(font);
-        int x = (Framebuffer.WIDTH - metrics.stringWidth(text)) / 2;
-        int y = ((Framebuffer.HEIGHT - (
+        this.metrics = renderer.getFontMetrics(font);
+        this.textHeight = ((Framebuffer.HEIGHT - (
                 metrics.getHeight()
         )) / 2) + metrics.getAscent() - metrics.getDescent();
-        renderer.rotate(Math.PI, (double) Framebuffer.WIDTH / 2, (double) Framebuffer.HEIGHT / 2);
+    }
 
-        renderer.setColor(new Color(0, 0, 0, 0));
-        renderer.drawRect(0, 0, Framebuffer.WIDTH, Framebuffer.HEIGHT);
+    @Override
+    public void render(
+            Graphics2D renderer,
+            Piece piece,
+            int offsetX,
+            int offsetY
+    ) {
+        String text = StringUtils.titleCaseWord(Arrays.stream(piece.name().split("_")).toList().getLast());
+
+        // from https://stackoverflow.com/a/27740330/7589775
+        int x = (Framebuffer.WIDTH - metrics.stringWidth(text)) / 2;
+
         // Barely black to go past the alpha check
         renderer.setColor(piece.getPieceSide() == Side.BLACK ? new Color(0, 1, 0) : Color.WHITE);
-        renderer.setFont(font);
-        renderer.drawString(text, x, y);
+
+        renderer.translate(offsetX, offsetY);
+        renderer.rotate(Math.PI, Framebuffer.WIDTH / 2.0, Framebuffer.HEIGHT / 2.0);
+        renderer.drawString(text, x, textHeight);
+        renderer.rotate(Math.PI, Framebuffer.WIDTH / 2.0, Framebuffer.HEIGHT / 2.0);
+        renderer.translate(-offsetX, -offsetY);
     }
 }

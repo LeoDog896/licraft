@@ -1,11 +1,13 @@
 package com.leodog896.licraft;
 
 import com.leodog896.licraft.commands.*;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
+import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.extras.MojangAuth;
 import net.minestom.server.extras.lan.OpenToLAN;
 import net.minestom.server.extras.lan.OpenToLANConfig;
@@ -31,6 +33,20 @@ public class Main {
             final Player player = event.getPlayer();
             event.setSpawningInstance(Lobby.INSTANCE);
             player.setRespawnPoint(Lobby.SPAWN_POSITION);
+        }).addListener(PlayerSpawnEvent.class, event -> {
+            if (!event.isFirstSpawn()) {
+                return;
+            }
+
+            final Player player = event.getPlayer();
+            player.sendMessage(MiniMessage.miniMessage().deserialize("""
+                    <green>Welcome to <b><gradient:green:#34eb89>LICRAFT</gradient></b>!</green>
+                    
+                    To get started, go to <gold>/register</gold>
+                    to connect to your <color:#c7945d>Lichess </color>account
+                    or <gold>/play</gold> to get started in a game!
+                    
+                    For more information, use <gold>/help</gold>.""".trim()));
         });
 
         OpenToLAN.open(new OpenToLANConfig().eventCallDelay(Duration.of(5, TimeUnit.SECOND)));

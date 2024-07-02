@@ -2,7 +2,9 @@ package com.leodog896.licraft;
 
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.instance.AddEntityToInstanceEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.InstanceManager;
@@ -19,7 +21,13 @@ public class Lobby {
 
         // Set the ChunkGenerator
         lobby.setGenerator(unit ->
-                unit.modifier().fillHeight(0, 1,Block.LIME_GLAZED_TERRACOTTA));
+                unit.modifier().fillHeight(0, 1, Block.BARRIER));
+
+        lobby.eventNode().addListener(AddEntityToInstanceEvent.class, event -> {
+            if (event.getEntity() instanceof Player player) {
+                player.setGameMode(GameMode.ADVENTURE);
+            }
+        });
 
         return lobby;
     }

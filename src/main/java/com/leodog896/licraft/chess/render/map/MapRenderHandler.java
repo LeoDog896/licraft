@@ -8,7 +8,11 @@ import com.leodog896.licraft.chess.ChessGame;
 import com.leodog896.licraft.chess.render.Action;
 import com.leodog896.licraft.chess.render.GameInterface;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
+import com.leodog896.licraft.chess.render.markup.Circle;
 import com.leodog896.licraft.chess.render.markup.Markup;
+import com.leodog896.licraft.chess.render.markup.MovementIndicator;
+import com.leodog896.licraft.chess.render.markup.Selected;
+import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
 import net.minestom.server.coordinate.Pos;
@@ -26,17 +30,20 @@ import net.minestom.server.item.Material;
 import net.minestom.server.map.Framebuffer;
 import net.minestom.server.map.MapColors;
 import net.minestom.server.map.framebuffers.DirectFramebuffer;
+import net.minestom.server.map.framebuffers.LargeGraphics2DFramebuffer;
 
 import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class MapRenderHandler implements GameInterface {
     private static final int BOARD_WIDTH = 8;
     private static final int BOARD_HEIGHT = 8;
     private static final int BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT;
+    private static final int WIDTH = Framebuffer.WIDTH * BOARD_WIDTH;
+    private static final int HEIGHT = Framebuffer.HEIGHT * BOARD_HEIGHT;
 
     private static int MAP_ID_COUNTER = 1;
 
@@ -46,7 +53,7 @@ public class MapRenderHandler implements GameInterface {
     private Entity[] screen = new Entity[BOARD_WIDTH * BOARD_HEIGHT];
     private WeakHashMap<Entity, Square> entityToSquare = new WeakHashMap<>();
 
-    private Map<Markup, Boolean> markupMap = new HashMap<>();
+    private Set<Markup> markup = Collections.newSetFromMap(new WeakHashMap<>());
 
     private ChessGame game;
     private TextChessFont textChessFont;
@@ -69,20 +76,78 @@ public class MapRenderHandler implements GameInterface {
         return framebuffer;
     }
 
+    private static Tuple2<Integer, Integer> corner(Square square) {
+        return new Tuple2<>(
+            Framebuffer.WIDTH * square.getFile().ordinal(),
+            Framebuffer.HEIGHT * square.getRank().ordinal()
+        );
+    }
+
+    private static Tuple2<Integer, Integer> center(Square square) {
+        return new Tuple2<>(
+                Framebuffer.WIDTH * square.getFile().ordinal() + Framebuffer.WIDTH / 2,
+                Framebuffer.HEIGHT * square.getRank().ordinal() + Framebuffer.HEIGHT / 2
+        );
+    }
+
     private void renderBoard(Board board, PacketGroupingAudience audience) {
-        for (int i = first_id; i < first_id + BOARD_SIZE; i++) {
-            Graphics2DAbsoluteAlphaFramebuffer framebuffer = new Graphics2DAbsoluteAlphaFramebuffer();
-            Square square = Square.values()[i - first_id];
+        LargeGraphics2DAlphaFramebuffer framebuffer = new LargeGraphics2DAlphaFramebuffer(
+                WIDTH,
+                HEIGHT
+        );
+
+        framebuffer.getRenderer().setColor(Color.BLACK);
+        framebuffer.getRenderer().drawRect(0, 0, WIDTH, HEIGHT);
+
+        this.textChessFont.prepare(framebuffer.getRenderer(), WIDTH, HEIGHT);
+
+        for (Markup mark : markup) {
+            framebuffer.getRenderer().setColor(mark.color());
+            switch (mark) {
+                case Circle circle -> framebuffer.getRenderer().fillOval(
+                        center(circle.square())._1(),
+                        center(circle.square())._2(),
+                        Framebuffer.WIDTH,
+                        Framebuffer.HEIGHT
+                );
+                case Selected selected -> framebuffer.getRenderer().fillRect(
+                    corner(selected.square())._1(),
+                        corner(selected.square())._2(),
+                    Framebuffer.WIDTH,
+                    Framebuffer.HEIGHT
+                );
+                case MovementIndicator indicator -> framebuffer.getRenderer().fillOval(
+                    center(indicator.square())._1() - Framebuffer.WIDTH / 6,
+                    center(indicator.square())._2() - Framebuffer.WIDTH / 6,
+                    Framebuffer.WIDTH / 3,
+                    Framebuffer.HEIGHT / 3
+                );
+                default -> {}
+            }
+        }
+
+        for (int i = 0; i < BOARD_SIZE; i++) {
+            Square square = Square.squareAt(i);
             Piece piece = board.getPiece(square);
 
             if (piece == Piece.NONE) {
-                audience.sendGroupedPacket(CLEAR_BUFFER.preparePacket(i));
                 continue;
-            };
+            }
 
-            this.textChessFont.render(framebuffer.getRenderer(), piece);
+            this.textChessFont.render(
+                    framebuffer.getRenderer(),
+                    piece,
+                    Framebuffer.WIDTH * square.getFile().ordinal(),
+                    Framebuffer.HEIGHT * square.getRank().ordinal()
+            );
+        }
 
-            audience.sendGroupedPacket(framebuffer.preparePacket(i));
+        for (int i = first_id; i < first_id + BOARD_SIZE; i++) {
+            audience.sendGroupedPacket(framebuffer.preparePacket(
+                    i,
+                    ((i - first_id) % 8) * Framebuffer.WIDTH,
+                    ((i - first_id) / 8) * Framebuffer.HEIGHT
+            ));
         }
     }
 
@@ -163,19 +228,19 @@ public class MapRenderHandler implements GameInterface {
 
     @Override
     public void enableMarkup(Markup markup) {
-        markupMap.put(markup, true);
+        this.markup.add(markup);
         rerender(game.audience());
     }
 
     @Override
     public void disableMarkup(Markup markup) {
-        markupMap.put(markup, false);
+        this.markup.add(markup);
         rerender(game.audience());
     }
 
     @Override
-    public void clearMarkup() {
-        markupMap.clear();
+    public void clearMarkup(Predicate<Markup> predicate) {
+        this.markup = this.markup.stream().filter(predicate).collect(Collectors.toSet());
         rerender(game.audience());
     }
 }

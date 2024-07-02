@@ -1,6 +1,7 @@
 package com.leodog896.licraft.chess;
 
 import com.github.bhlangonijr.chesslib.Board;
+import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.Square;
 import com.github.bhlangonijr.chesslib.move.Move;
 import com.leodog896.licraft.FullbrightDimension;
@@ -9,9 +10,12 @@ import com.leodog896.licraft.chess.render.Action;
 import com.leodog896.licraft.chess.render.map.MapRenderHandler;
 import com.leodog896.licraft.chess.render.GameInterface;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
+import com.leodog896.licraft.chess.render.markup.MovementIndicator;
 import com.leodog896.licraft.chess.render.markup.Selected;
+import com.leodog896.licraft.util.StringUtils;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
@@ -28,17 +32,21 @@ import net.minestom.server.instance.InstanceManager;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.Material;
 import net.minestom.server.sound.SoundEvent;
+import net.minestom.server.timer.Task;
+import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ChessGame {
     public static final Pos SPAWN_POSITION = new Pos(7.0 / 2, 5, 7.0 / 2);
 
     private static final Color SELECT_COLOR = new Color(3, 119, 252);
+    private static final Color INDICATOR_COLOR = new Color(168, 50, 54);
 
     private static final Sound SELECT_SOUND = Sound.sound(
             Key.key(SoundEvent.BLOCK_LEVER_CLICK.name()),
@@ -74,6 +82,8 @@ public class ChessGame {
     private final Entity[] maps = new Entity[8 * 8];
 
     private Square selectedSquare;
+
+    private Task tickTask;
 
     public ChessGame() {
         this(false);
@@ -125,6 +135,11 @@ public class ChessGame {
             }
         });
 
+        this.tickTask = MinecraftServer.getSchedulerManager().submitTask(() -> {
+            actionBar();
+            return TaskSchedule.tick(10);
+        });
+
         instance.eventNode().addChild(eventNode);
 
         this.instance = instance;
@@ -159,18 +174,35 @@ public class ChessGame {
 
             if (action == Action.PRIMARY) {
                 if (selectedSquare != null) {
-                    this.gameInterface.enableMarkup(new Selected(SELECT_COLOR, selectedSquare));
+                    recalculateMarkup();
                     attemptMove(player, selectedSquare, square);
-                } else {
+                } else if (board.legalMoves().stream().anyMatch(move -> move.getFrom() == square)) {
                     this.selectedSquare = square;
+                    recalculateMarkup();
                     this.gameInterface.enableMarkup(new Selected(SELECT_COLOR, selectedSquare));
                     player.playSound(SELECT_SOUND);
+                } else {
+                    failMove(player);
                 }
             }
             // TODO: else
         });
 
         this.gameInterface.load();
+    }
+
+    public void recalculateMarkup() {
+        this.gameInterface.clearInformativeMarkup();
+
+        if (this.selectedSquare != null) {
+            for (Move move : this.board
+                    .legalMoves().stream()
+                    .filter(move -> move.getFrom() == selectedSquare)
+                    .collect(Collectors.toSet())
+            ) {
+                this.gameInterface.enableMarkup(new MovementIndicator(INDICATOR_COLOR, move.getTo()));
+            }
+        }
     }
 
     public Instance getInstance() {
@@ -221,6 +253,18 @@ public class ChessGame {
         return this.invited.contains(player);
     }
 
+    public void actionBar() {
+        String side = StringUtils.titleCaseWord(board.getSideToMove().name());
+        String color = board.getSideToMove() == Side.BLACK ? "gray" : "white";
+
+        audience().sendActionBar(MiniMessage.miniMessage().deserialize(String.format(
+                "<%s>%s to move<%s>",
+                color,
+                side,
+                color
+        )));
+    }
+
     public void invite(Player player) {
         this.invited.add(player);
     }
@@ -260,18 +304,26 @@ public class ChessGame {
 
     public void attemptMove(Player player, Square from, Square to) {
         selectedSquare = null;
+        // TODO: hopper UI for promotions
         Move move = new Move(from, to);
         if (board.isMoveLegal(move, true)) {
             board.doMove(move);
             this.gameInterface.move(move);
             this.audience().playSound(MOVE_SOUND, player.getPosition());
+            actionBar();
+            recalculateMarkup();
         } else {
-            player.playSound(MOVE_UNSUCCESSFUL, player.getPosition());
+            failMove(player);
         }
+    }
+
+    private void failMove(Player player) {
+        player.playSound(MOVE_UNSUCCESSFUL, player.getPosition());
     }
 
     public void finished() {
         this.gameInterface.unload();
+        this.tickTask.cancel();
 
         // TODO: send players & spectators to lobby.
     }
