@@ -227,20 +227,23 @@ public class MapRenderHandler implements GameInterface {
     }
 
     @Override
-    public void enableMarkup(Markup markup) {
+    public void enableMarkup(Markup markup, boolean render) {
         this.markup.add(markup);
-        rerender(game.audience());
+        if (render)
+            rerender(game.audience());
     }
 
     @Override
-    public void disableMarkup(Markup markup) {
+    public void disableMarkup(Markup markup, boolean render) {
         this.markup.add(markup);
-        rerender(game.audience());
+        if (render)
+            rerender(game.audience());
     }
 
     @Override
-    public void clearMarkup(Predicate<Markup> predicate) {
+    public void clearMarkup(Predicate<Markup> predicate, boolean render) {
         this.markup = this.markup.stream().filter(predicate).collect(Collectors.toSet());
-        rerender(game.audience());
+        if (render)
+            rerender(game.audience());
     }
 }

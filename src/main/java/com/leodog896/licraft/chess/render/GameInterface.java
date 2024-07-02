@@ -25,15 +25,15 @@ public interface GameInterface {
 
     void move(Move move);
 
-    void enableMarkup(Markup markup);
-    void disableMarkup(Markup markup);
+    void enableMarkup(Markup markup, boolean render);
+    void disableMarkup(Markup markup, boolean render);
 
-    default void clearMarkup() {
-        clearMarkup(_ -> true);
+    default void clearMarkup(boolean render) {
+        clearMarkup(_ -> true, render);
     };
-    void clearMarkup(Predicate<Markup> predicate);
+    void clearMarkup(Predicate<Markup> predicate, boolean render);
 
-    default void clearDecorativeMarkup() {
+    default void clearDecorativeMarkup(boolean render) {
         clearMarkup(markup -> switch (markup) {
             case Arrow _ -> false;
             case Circle _ -> false;
@@ -41,10 +41,10 @@ public interface GameInterface {
             case RecentMovement _ -> true;
             case Selected _ -> true;
             case Threaten _ -> true;
-        });
+        }, render);
     }
 
-    default void clearInformativeMarkup() {
+    default void clearInformativeMarkup(boolean render) {
         clearMarkup(markup -> switch (markup) {
             case Arrow _ -> true;
             case Circle _ -> true;
@@ -52,6 +52,6 @@ public interface GameInterface {
             case RecentMovement _ -> false;
             case Selected _ -> false;
             case Threaten _ -> false;
-        });
+        }, render);
     }
 }

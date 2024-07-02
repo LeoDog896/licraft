@@ -179,7 +179,7 @@ public class ChessGame {
                 } else if (board.legalMoves().stream().anyMatch(move -> move.getFrom() == square)) {
                     this.selectedSquare = square;
                     recalculateMarkup();
-                    this.gameInterface.enableMarkup(new Selected(SELECT_COLOR, selectedSquare));
+                    this.gameInterface.enableMarkup(new Selected(SELECT_COLOR, selectedSquare), true);
                     player.playSound(SELECT_SOUND);
                 } else {
                     failMove(player);
@@ -192,7 +192,7 @@ public class ChessGame {
     }
 
     public void recalculateMarkup() {
-        this.gameInterface.clearInformativeMarkup();
+        this.gameInterface.clearInformativeMarkup(false);
 
         if (this.selectedSquare != null) {
             for (Move move : this.board
@@ -200,9 +200,11 @@ public class ChessGame {
                     .filter(move -> move.getFrom() == selectedSquare)
                     .collect(Collectors.toSet())
             ) {
-                this.gameInterface.enableMarkup(new MovementIndicator(INDICATOR_COLOR, move.getTo()));
+                this.gameInterface.enableMarkup(new MovementIndicator(INDICATOR_COLOR, move.getTo()), false);
             }
         }
+
+        this.gameInterface.rerender(this.audience());
     }
 
     public Instance getInstance() {
