@@ -1,7 +1,6 @@
 package com.leodog896.licraft.lichess;
 
 import chariot.Client;
-import chariot.ClientAuth;
 import net.minestom.server.entity.Player;
 
 import java.util.WeakHashMap;

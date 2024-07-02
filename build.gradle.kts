@@ -28,13 +28,14 @@ dependencies {
 
     // vavr
     implementation("io.vavr:vavr:0.10.3")
+
+    // Rayfast
+    implementation("com.github.EmortalMC:Rayfast:7975ac5e4c7")
 }
 
 application {
     mainClass = "com.leodog896.licraft.Main"
 }
-
-
 
 tasks {
     named<ShadowJar>("shadowJar") {

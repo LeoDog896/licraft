@@ -12,6 +12,9 @@ import com.leodog896.licraft.chess.render.markup.Circle;
 import com.leodog896.licraft.chess.render.markup.Markup;
 import com.leodog896.licraft.chess.render.markup.MovementIndicator;
 import com.leodog896.licraft.chess.render.markup.Selected;
+import dev.emortal.rayfast.area.Area;
+import dev.emortal.rayfast.area.area3d.Area3d;
+import dev.emortal.rayfast.area.area3d.Area3dRectangularPrism;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
@@ -30,7 +33,6 @@ import net.minestom.server.item.Material;
 import net.minestom.server.map.Framebuffer;
 import net.minestom.server.map.MapColors;
 import net.minestom.server.map.framebuffers.DirectFramebuffer;
-import net.minestom.server.map.framebuffers.LargeGraphics2DFramebuffer;
 
 import java.awt.*;
 import java.util.*;
@@ -44,42 +46,25 @@ public class MapRenderHandler implements GameInterface {
     private static final int BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT;
     private static final int WIDTH = Framebuffer.WIDTH * BOARD_WIDTH;
     private static final int HEIGHT = Framebuffer.HEIGHT * BOARD_HEIGHT;
-
+    private static final Map<Area3d, Square> squareCollisions = getSquareCollisions();
     private static int MAP_ID_COUNTER = 1;
-
-    private static final DirectFramebuffer CLEAR_BUFFER = clearBuffer();
-
+    private final Entity[] screen = new Entity[BOARD_WIDTH * BOARD_HEIGHT];
+    private final WeakHashMap<Entity, Square> entityToSquare = new WeakHashMap<>();
+    private final ChessGame game;
+    private final TextChessFont textChessFont;
+    private final EventNode<InstanceEvent> eventNode = EventNode.type("render-event", EventFilter.INSTANCE);
     private int first_id;
-    private Entity[] screen = new Entity[BOARD_WIDTH * BOARD_HEIGHT];
-    private WeakHashMap<Entity, Square> entityToSquare = new WeakHashMap<>();
-
     private Set<Markup> markup = Collections.newSetFromMap(new WeakHashMap<>());
-
-    private ChessGame game;
-    private TextChessFont textChessFont;
-
-    private EventNode<InstanceEvent> eventNode = EventNode.type("render-event", EventFilter.INSTANCE);
 
     public MapRenderHandler(ChessGame game, TextChessFont textChessFont) {
         this.game = game;
         this.textChessFont = textChessFont;
     }
 
-    private static DirectFramebuffer clearBuffer() {
-        DirectFramebuffer framebuffer = new DirectFramebuffer();
-        for (int i = 0; i < Framebuffer.WIDTH; i++) {
-            for (int j = 0; j < Framebuffer.HEIGHT; j++) {
-                framebuffer.set(i, j, MapColors.NONE.baseColor());
-            }
-        }
-
-        return framebuffer;
-    }
-
     private static Tuple2<Integer, Integer> corner(Square square) {
         return new Tuple2<>(
-            Framebuffer.WIDTH * square.getFile().ordinal(),
-            Framebuffer.HEIGHT * square.getRank().ordinal()
+                Framebuffer.WIDTH * square.getFile().ordinal(),
+                Framebuffer.HEIGHT * square.getRank().ordinal()
         );
     }
 
@@ -111,18 +96,19 @@ public class MapRenderHandler implements GameInterface {
                         Framebuffer.HEIGHT
                 );
                 case Selected selected -> framebuffer.getRenderer().fillRect(
-                    corner(selected.square())._1(),
+                        corner(selected.square())._1(),
                         corner(selected.square())._2(),
-                    Framebuffer.WIDTH,
-                    Framebuffer.HEIGHT
+                        Framebuffer.WIDTH,
+                        Framebuffer.HEIGHT
                 );
                 case MovementIndicator indicator -> framebuffer.getRenderer().fillOval(
-                    center(indicator.square())._1() - Framebuffer.WIDTH / 6,
-                    center(indicator.square())._2() - Framebuffer.WIDTH / 6,
-                    Framebuffer.WIDTH / 3,
-                    Framebuffer.HEIGHT / 3
+                        center(indicator.square())._1() - Framebuffer.WIDTH / 6,
+                        center(indicator.square())._2() - Framebuffer.WIDTH / 6,
+                        Framebuffer.WIDTH / 3,
+                        Framebuffer.HEIGHT / 3
                 );
-                default -> {}
+                default -> {
+                }
             }
         }
 
@@ -188,12 +174,12 @@ public class MapRenderHandler implements GameInterface {
 
         game.getInstance().eventNode().addChild(eventNode);
 
-        renderBoard(game.getBoard(), game.audience());
+        renderBoard(game.getBoard(), game.activeAudience());
     }
 
     @Override
     public void move(Move move) {
-        rerender(game.audience());
+        rerender(game.activeAudience());
     }
 
     @Override
@@ -230,20 +216,43 @@ public class MapRenderHandler implements GameInterface {
     public void enableMarkup(Markup markup, boolean render) {
         this.markup.add(markup);
         if (render)
-            rerender(game.audience());
+            rerender(game.activeAudience());
     }
 
     @Override
     public void disableMarkup(Markup markup, boolean render) {
         this.markup.add(markup);
         if (render)
-            rerender(game.audience());
+            rerender(game.activeAudience());
     }
 
     @Override
     public void clearMarkup(Predicate<Markup> predicate, boolean render) {
         this.markup = this.markup.stream().filter(predicate).collect(Collectors.toSet());
         if (render)
-            rerender(game.audience());
+            rerender(game.activeAudience());
+    }
+
+    public static Map<Area3d, Square> getSquareCollisions() {
+        Map<Area3d, Square> collisions = new HashMap<>();
+
+        for (Square square : Square.values()) {
+            double cornerX = square.getFile().ordinal() - 0.5;
+            double cornerZ = square.getRank().ordinal() - 0.5;
+            collisions.put(
+                    Area3dRectangularPrism.of(
+                            cornerX, -0.1, cornerZ,
+                            cornerX + 1, 0.1, cornerZ + 1
+                    ),
+                    square
+            );
+        }
+
+        return collisions;
+    }
+
+    @Override
+    public Map<Area3d, Square> squareCollisions() {
+        return squareCollisions;
     }
 }

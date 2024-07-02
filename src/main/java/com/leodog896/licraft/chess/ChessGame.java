@@ -7,15 +7,15 @@ import com.github.bhlangonijr.chesslib.move.Move;
 import com.leodog896.licraft.FullbrightDimension;
 import com.leodog896.licraft.Messages;
 import com.leodog896.licraft.chess.render.Action;
-import com.leodog896.licraft.chess.render.map.MapRenderHandler;
 import com.leodog896.licraft.chess.render.GameInterface;
+import com.leodog896.licraft.chess.render.map.MapRenderHandler;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
 import com.leodog896.licraft.chess.render.markup.MovementIndicator;
 import com.leodog896.licraft.chess.render.markup.Selected;
 import com.leodog896.licraft.util.StringUtils;
+import dev.emortal.rayfast.area.area3d.Area3d;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
@@ -37,8 +37,8 @@ import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,6 +47,7 @@ public class ChessGame {
 
     private static final Color SELECT_COLOR = new Color(3, 119, 252);
     private static final Color INDICATOR_COLOR = new Color(168, 50, 54);
+    private static final Color HIGHLIGHT_COLOR = new Color(219, 194, 25);
 
     private static final Sound SELECT_SOUND = Sound.sound(
             Key.key(SoundEvent.BLOCK_LEVER_CLICK.name()),
@@ -60,46 +61,28 @@ public class ChessGame {
             Key.key(SoundEvent.ENTITY_SKELETON_STEP.name()),
             Sound.Source.PLAYER, 1F, 0.5F
     );
-
+    private static final int ID_LENGTH = 5;
+    private static final WeakHashMap<String, ChessGame> chessGameIds = new WeakHashMap<>();
+    // TODO: use UUIDs to allow players to disconnect & reconnect from & to the server.
     private final Set<Player> players = Collections.newSetFromMap(new WeakHashMap<>());
     private final Set<Player> spectators = Collections.newSetFromMap(new WeakHashMap<>());
     private final Set<Player> invited = Collections.newSetFromMap(new WeakHashMap<>());
-
-    private boolean isPublic = false;
-
+    private final boolean isPublic = false;
     private final Board board = new Board();
-
-    private static final int ID_LENGTH = 5;
-    private static final WeakHashMap<String, ChessGame> chessGameIds = new WeakHashMap<>();
-    private final Material randomMaterial;
-
-    /** The max amount of players that can actively be playing a game at once */
-    private int MAX_SIZE = 2;
-
-    private Instance instance;
-
-    private GameInterface gameInterface;
+    private final Material material;
+    private final Instance instance;
     private final Entity[] maps = new Entity[8 * 8];
-
+    private final Task displayTickTask;
+    private final Task collisionTickTask;
+    /**
+     * The max amount of players that can actively be playing a game at once
+     */
+    private int MAX_SIZE = 2;
+    private GameInterface gameInterface;
     private Square selectedSquare;
-
-    private Task tickTask;
 
     public ChessGame() {
         this(false);
-    }
-
-    public PacketGroupingAudience audience() {
-        return new PacketGroupingAudience() {
-            @Override
-            public @NotNull Collection<@NotNull Player> getPlayers() {
-                return Stream.concat(players.stream(), spectators.stream()).toList();
-            }
-        };
-    }
-
-    public Board getBoard() {
-        return this.board;
     }
 
     public ChessGame(boolean playground) {
@@ -108,7 +91,7 @@ public class ChessGame {
         }
 
         // TODO: actually give a random material
-        this.randomMaterial = Material.ACACIA_BOAT;
+        this.material = Material.ACACIA_BOAT;
 
         generateID();
 
@@ -135,9 +118,19 @@ public class ChessGame {
             }
         });
 
-        this.tickTask = MinecraftServer.getSchedulerManager().submitTask(() -> {
+        this.displayTickTask = MinecraftServer.getSchedulerManager().submitTask(() -> {
             actionBar();
             return TaskSchedule.tick(10);
+        });
+
+        this.collisionTickTask = MinecraftServer.getSchedulerManager().submitTask(() -> {
+            Map<Area3d, Square> squareCollisions = this.gameInterface.squareCollisions();
+
+            for (Area3d area : squareCollisions.keySet()) {
+//                area.lineIntersection()
+            }
+
+            return TaskSchedule.tick(2);
         });
 
         instance.eventNode().addChild(eventNode);
@@ -145,6 +138,38 @@ public class ChessGame {
         this.instance = instance;
 
         setRenderHandler(new MapRenderHandler(this, new TextChessFont()));
+    }
+
+    public static ChessGame getById(String id) {
+        return chessGameIds.get(id);
+    }
+
+    public Material getMaterial() {
+        return this.material;
+    }
+
+    public PacketGroupingAudience activeAudience() {
+        return new PacketGroupingAudience() {
+            @Override
+            public @NotNull Collection<@NotNull Player> getPlayers() {
+                return Stream.concat(players.stream(), spectators.stream()).toList();
+            }
+        };
+    }
+
+    public PacketGroupingAudience passiveAudience() {
+        return new PacketGroupingAudience() {
+            @Override
+            public @NotNull Collection<@NotNull Player> getPlayers() {
+                return Stream.concat(players.stream(), spectators.stream())
+                        .filter(player -> player.getInstance() == getInstance())
+                        .toList();
+            }
+        };
+    }
+
+    public Board getBoard() {
+        return this.board;
     }
 
     public void generateID() {
@@ -204,7 +229,7 @@ public class ChessGame {
             }
         }
 
-        this.gameInterface.rerender(this.audience());
+        this.gameInterface.rerender(this.activeAudience());
     }
 
     public Instance getInstance() {
@@ -213,6 +238,7 @@ public class ChessGame {
 
     /**
      * Player formally forfeits / permanently leaves a game.
+     *
      * @param player The player forfeiting or leaving
      */
     public void forfeit(Player player) {
@@ -243,10 +269,6 @@ public class ChessGame {
         ));
     }
 
-    public static ChessGame getById(String id) {
-        return chessGameIds.get(id);
-    }
-
     public boolean isPublic() {
         return this.isPublic;
     }
@@ -259,7 +281,7 @@ public class ChessGame {
         String side = StringUtils.titleCaseWord(board.getSideToMove().name());
         String color = board.getSideToMove() == Side.BLACK ? "gray" : "white";
 
-        audience().sendActionBar(MiniMessage.miniMessage().deserialize(String.format(
+        activeAudience().sendActionBar(MiniMessage.miniMessage().deserialize(String.format(
                 "<%s>%s to move<%s>",
                 color,
                 side,
@@ -311,7 +333,7 @@ public class ChessGame {
         if (board.isMoveLegal(move, true)) {
             board.doMove(move);
             this.gameInterface.move(move);
-            this.audience().playSound(MOVE_SOUND, player.getPosition());
+            this.activeAudience().playSound(MOVE_SOUND, player.getPosition());
             actionBar();
             recalculateMarkup();
         } else {
@@ -325,7 +347,8 @@ public class ChessGame {
 
     public void finished() {
         this.gameInterface.unload();
-        this.tickTask.cancel();
+        this.displayTickTask.cancel();
+        this.collisionTickTask.cancel();
 
         // TODO: send players & spectators to lobby.
     }

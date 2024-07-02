@@ -6,6 +6,7 @@ import java.awt.*;
 
 /**
  * A movement 'indicator', showing that a pawn can move to another pawn
+ *
  * @param color
  * @param square
  */
