@@ -9,6 +9,7 @@ import com.leodog896.licraft.Messages;
 import com.leodog896.licraft.chess.render.Action;
 import com.leodog896.licraft.chess.render.GameInterface;
 import com.leodog896.licraft.chess.render.map.MapRenderHandler;
+import com.leodog896.licraft.chess.render.map.chessfont.GlyphChessFont;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
 import com.leodog896.licraft.chess.render.markup.MovementIndicator;
 import com.leodog896.licraft.chess.render.markup.Selected;
@@ -37,6 +38,7 @@ import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
+import java.io.IOException;
 import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -124,6 +126,7 @@ public class ChessGame {
         });
 
         this.collisionTickTask = MinecraftServer.getSchedulerManager().submitTask(() -> {
+            if (this.gameInterface == null) return TaskSchedule.tick(2);
             Map<Area3d, Square> squareCollisions = this.gameInterface.squareCollisions();
 
             for (Area3d area : squareCollisions.keySet()) {
@@ -137,7 +140,7 @@ public class ChessGame {
 
         this.instance = instance;
 
-        setRenderHandler(new MapRenderHandler(this, new TextChessFont()));
+        setRenderHandler(new MapRenderHandler(this));
     }
 
     public static ChessGame getById(String id) {

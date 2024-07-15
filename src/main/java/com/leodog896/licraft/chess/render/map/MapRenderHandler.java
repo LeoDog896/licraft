@@ -7,6 +7,8 @@ import com.github.bhlangonijr.chesslib.move.Move;
 import com.leodog896.licraft.chess.ChessGame;
 import com.leodog896.licraft.chess.render.Action;
 import com.leodog896.licraft.chess.render.GameInterface;
+import com.leodog896.licraft.chess.render.map.chessfont.ChessFont;
+import com.leodog896.licraft.chess.render.map.chessfont.GlyphChessFont;
 import com.leodog896.licraft.chess.render.map.chessfont.TextChessFont;
 import com.leodog896.licraft.chess.render.markup.Circle;
 import com.leodog896.licraft.chess.render.markup.Markup;
@@ -33,8 +35,10 @@ import net.minestom.server.item.Material;
 import net.minestom.server.map.Framebuffer;
 import net.minestom.server.map.MapColors;
 import net.minestom.server.map.framebuffers.DirectFramebuffer;
+import org.tinylog.Logger;
 
 import java.awt.*;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -51,14 +55,30 @@ public class MapRenderHandler implements GameInterface {
     private final Entity[] screen = new Entity[BOARD_WIDTH * BOARD_HEIGHT];
     private final WeakHashMap<Entity, Square> entityToSquare = new WeakHashMap<>();
     private final ChessGame game;
-    private final TextChessFont textChessFont;
+    private final ChessFont chessFont;
     private final EventNode<InstanceEvent> eventNode = EventNode.type("render-event", EventFilter.INSTANCE);
     private int first_id;
     private Set<Markup> markup = Collections.newSetFromMap(new WeakHashMap<>());
 
-    public MapRenderHandler(ChessGame game, TextChessFont textChessFont) {
+    public MapRenderHandler(ChessGame game, ChessFont chessFont) {
         this.game = game;
-        this.textChessFont = textChessFont;
+        this.chessFont = chessFont;
+    }
+
+    private static ChessFont getBestChessFont() {
+        ChessFont font;
+        try {
+            font = new GlyphChessFont();
+        } catch (IOException exception) {
+            Logger.warn(exception);
+            font = new TextChessFont();
+        }
+
+        return font;
+    }
+
+    public MapRenderHandler(ChessGame game) {
+        this(game, getBestChessFont());
     }
 
     private static Tuple2<Integer, Integer> corner(Square square) {
@@ -76,32 +96,32 @@ public class MapRenderHandler implements GameInterface {
     }
 
     private void renderBoard(Board board, PacketGroupingAudience audience) {
-        LargeGraphics2DAlphaFramebuffer framebuffer = new LargeGraphics2DAlphaFramebuffer(
+        LargeGraphics2DAlphaFramebuffer frameBuffer = new LargeGraphics2DAlphaFramebuffer(
                 WIDTH,
                 HEIGHT
         );
 
-        framebuffer.getRenderer().setColor(Color.BLACK);
-        framebuffer.getRenderer().drawRect(0, 0, WIDTH, HEIGHT);
+        frameBuffer.getRenderer().setColor(Color.BLACK);
+        frameBuffer.getRenderer().drawRect(0, 0, WIDTH, HEIGHT);
 
-        this.textChessFont.prepare(framebuffer.getRenderer(), WIDTH, HEIGHT);
+        this.chessFont.prepare(frameBuffer.getRenderer(), WIDTH, HEIGHT);
 
         for (Markup mark : markup) {
-            framebuffer.getRenderer().setColor(mark.color());
+            frameBuffer.getRenderer().setColor(mark.color());
             switch (mark) {
-                case Circle circle -> framebuffer.getRenderer().fillOval(
+                case Circle circle -> frameBuffer.getRenderer().fillOval(
                         center(circle.square())._1(),
                         center(circle.square())._2(),
                         Framebuffer.WIDTH,
                         Framebuffer.HEIGHT
                 );
-                case Selected selected -> framebuffer.getRenderer().fillRect(
+                case Selected selected -> frameBuffer.getRenderer().fillRect(
                         corner(selected.square())._1(),
                         corner(selected.square())._2(),
                         Framebuffer.WIDTH,
                         Framebuffer.HEIGHT
                 );
-                case MovementIndicator indicator -> framebuffer.getRenderer().fillOval(
+                case MovementIndicator indicator -> frameBuffer.getRenderer().fillOval(
                         center(indicator.square())._1() - Framebuffer.WIDTH / 6,
                         center(indicator.square())._2() - Framebuffer.WIDTH / 6,
                         Framebuffer.WIDTH / 3,
@@ -116,12 +136,13 @@ public class MapRenderHandler implements GameInterface {
             Square square = Square.squareAt(i);
             Piece piece = board.getPiece(square);
 
+            // To satisfy ChessFont#render's contract.
             if (piece == Piece.NONE) {
                 continue;
             }
 
-            this.textChessFont.render(
-                    framebuffer.getRenderer(),
+            this.chessFont.render(
+                    frameBuffer.getRenderer(),
                     piece,
                     Framebuffer.WIDTH * square.getFile().ordinal(),
                     Framebuffer.HEIGHT * square.getRank().ordinal()
@@ -129,7 +150,7 @@ public class MapRenderHandler implements GameInterface {
         }
 
         for (int i = first_id; i < first_id + BOARD_SIZE; i++) {
-            audience.sendGroupedPacket(framebuffer.preparePacket(
+            audience.sendGroupedPacket(frameBuffer.preparePacket(
                     i,
                     ((i - first_id) % 8) * Framebuffer.WIDTH,
                     ((i - first_id) / 8) * Framebuffer.HEIGHT

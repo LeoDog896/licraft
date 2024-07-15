@@ -31,6 +31,13 @@ dependencies {
 
     // Rayfast
     implementation("com.github.EmortalMC:Rayfast:7975ac5e4c7")
+
+    // Tinylog
+    implementation("org.tinylog:tinylog-api:2.7.0")
+    implementation("org.tinylog:tinylog-impl:2.7.0")
+
+    // JetBrains Annotations
+    implementation("org.jetbrains:annotations:24.0.0")
 }
 
 application {

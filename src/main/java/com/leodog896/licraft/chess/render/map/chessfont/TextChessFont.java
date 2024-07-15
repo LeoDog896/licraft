@@ -4,13 +4,15 @@ import com.github.bhlangonijr.chesslib.Piece;
 import com.github.bhlangonijr.chesslib.Side;
 import com.leodog896.licraft.util.StringUtils;
 import net.minestom.server.map.Framebuffer;
+import org.jetbrains.annotations.NotNull;
+import org.tinylog.Logger;
 
 import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
-public class TextChessFont implements ChessFont {
+public final class TextChessFont implements ChessFont {
     private Font font;
     private FontMetrics metrics;
     private int textHeight;
@@ -19,9 +21,8 @@ public class TextChessFont implements ChessFont {
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
         InputStream monocraft = classloader.getResourceAsStream("font/Monocraft-no-ligatures.ttf");
 
-        // TODO: use logger
         if (monocraft == null) {
-            System.err.println("WARNING: Monocraft file is null.");
+            Logger.warn("Monocraft file is null.");
             this.font = Font.getFont("Arial");
             return;
         }
@@ -30,13 +31,13 @@ public class TextChessFont implements ChessFont {
             this.font = Font.createFont(Font.TRUETYPE_FONT, monocraft);
             this.font = this.font.deriveFont(Font.BOLD, 20);
         } catch (FontFormatException | IOException e) {
-            System.err.println(e);
+            Logger.warn(e);
             this.font = Font.getFont("Arial");
         }
     }
 
     @Override
-    public void prepare(Graphics2D renderer, int width, int height) {
+    public void prepare(@NotNull Graphics2D renderer, int width, int height) {
         renderer.setFont(font);
         // from https://stackoverflow.com/a/27740330/7589775
         this.metrics = renderer.getFontMetrics(font);
@@ -47,8 +48,8 @@ public class TextChessFont implements ChessFont {
 
     @Override
     public void render(
-            Graphics2D renderer,
-            Piece piece,
+            @NotNull Graphics2D renderer,
+            @NotNull Piece piece,
             int offsetX,
             int offsetY
     ) {
