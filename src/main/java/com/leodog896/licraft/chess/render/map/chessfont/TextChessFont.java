@@ -17,7 +17,7 @@ public class TextChessFont implements ChessFont {
 
     public TextChessFont() {
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-        InputStream monocraft = classloader.getResourceAsStream("Monocraft-no-ligatures.ttf");
+        InputStream monocraft = classloader.getResourceAsStream("font/Monocraft-no-ligatures.ttf");
 
         // TODO: use logger
         if (monocraft == null) {

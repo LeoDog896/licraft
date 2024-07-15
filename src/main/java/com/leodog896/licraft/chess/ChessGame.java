@@ -199,9 +199,11 @@ public class ChessGame {
 
             if (action == Action.PRIMARY) {
                 if (selectedSquare != null) {
+                    // we've already selected a square - let's move!
                     recalculateMarkup();
                     attemptMove(player, selectedSquare, square);
                 } else if (board.legalMoves().stream().anyMatch(move -> move.getFrom() == square)) {
+                    // lets select a square!
                     this.selectedSquare = square;
                     recalculateMarkup();
                     this.gameInterface.enableMarkup(new Selected(SELECT_COLOR, selectedSquare), true);
