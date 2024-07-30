@@ -21,7 +21,7 @@ public class LargeGraphics2DAlphaFramebuffer implements LargeFramebuffer {
     public LargeGraphics2DAlphaFramebuffer(int width, int height) {
         this.width = width;
         this.height = height;
-        backingImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        backingImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         renderer = backingImage.createGraphics();
         pixels = ((DataBufferInt) backingImage.getRaster().getDataBuffer()).getData();
     }
@@ -60,8 +60,9 @@ public class LargeGraphics2DAlphaFramebuffer implements LargeFramebuffer {
 
     @Override
     public byte getMapColor(int x, int y) {
-        int color = get(x, y);
-        if (color == 0) return MapColors.NONE.baseColor();
-        else return MapColors.closestColor(color).getIndex();
+        int rawColor = get(x, y);
+        if (rawColor == 0) return MapColors.NONE.baseColor();
+        int color = rawColor & 0x00FFFFFF;
+        return MapColors.closestColor(color).getIndex();
     }
 }

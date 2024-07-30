@@ -1,0 +1,7 @@
+<green>Welcome to <b><gradient:green:#34eb89>LICRAFT</gradient></b>!</green>
+
+To get started, go to <gold>/register</gold>
+to connect to your <color:#c7945d>Lichess </color>account
+or <gold>/play</gold> to get started in a game!
+
+For more information, use <gold>/help</gold>.

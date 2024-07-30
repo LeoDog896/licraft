@@ -24,11 +24,9 @@ public final class GlyphChessFont implements ChessFont {
 
     public GlyphChessFont() throws IOException {
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-        InputStream spriteSheetStream = classloader.getResourceAsStream("glyph/pieces.png");
-
+        InputStream spriteSheetStream = classloader.getResourceAsStream("glyphs/pieces.png");
         assert spriteSheetStream != null;
         this.spriteSheet = ImageIO.read(spriteSheetStream);
-
         for (Piece piece : Piece.values()) {
             if (piece != Piece.NONE) {
                 this.mappedSheet.put(piece, pieceImage(piece));
@@ -58,10 +56,14 @@ public final class GlyphChessFont implements ChessFont {
             int offsetX,
             int offsetY
     ) {
+        AffineTransform transform = AffineTransform.getScaleInstance(128.0 / GLYPH_WIDTH, 128.0 / GLYPH_HEIGHT);
+        transform.rotate(Math.PI);
+        transform.translate(-GLYPH_WIDTH, -GLYPH_HEIGHT);
+
         renderer.drawImage(
                 mappedSheet.get(piece),
                 new AffineTransformOp(
-                        AffineTransform.getScaleInstance(1.0, 1.0),
+                        transform,
                         AffineTransformOp.TYPE_NEAREST_NEIGHBOR
                 ),
                 offsetX,

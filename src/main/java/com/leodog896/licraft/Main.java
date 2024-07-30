@@ -50,6 +50,7 @@ public class Main {
         MinecraftServer.getCommandManager().register(new MoveCommand());
         MinecraftServer.getCommandManager().register(new JoinCommand());
         MinecraftServer.getCommandManager().register(new InviteCommand());
+        MinecraftServer.getCommandManager().register(new HelpCommand());
 
         System.out.println("Server started on port 25565.");
 

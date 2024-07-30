@@ -73,7 +73,6 @@ public class ChessGame {
     private final Board board = new Board();
     private final Material material;
     private final Instance instance;
-    private final Entity[] maps = new Entity[8 * 8];
     private final Task displayTickTask;
     private final Task collisionTickTask;
     /**
